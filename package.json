@@ -1,0 +1,21 @@
+{
+  "name": "vioska-synchro",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "dev:cloudflare": "wrangler dev",
+    "db:local": "wrangler d1 migrations apply vioska-synchro --local",
+    "db:remote": "wrangler d1 migrations apply vioska-synchro --remote",
+    "deploy": "wrangler deploy",
+    "check:cloudflare": "wrangler deploy --dry-run"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "devDependencies": {
+    "wrangler": "4.150.0"
+  }
+}

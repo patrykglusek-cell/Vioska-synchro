@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:8787';
+const post = async (path, body) => {
+  const response = await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return { status: response.status, data: await response.json() };
+};
+assert.equal((await fetch(base + '/')).status, 200);
+assert.equal((await post('/api/rooms', { name: '' })).status, 400);
+const room = await post('/api/rooms', { name: 'Test D1' }); assert.equal(room.status, 201);
+const path = '/api/rooms/' + room.data.id;
+const arrival = new Date(Date.now() + 7200000).toISOString();
+const attack = await post(path + '/attacks', { target: 'Cel', coordinates: '500|500', arrival }); assert.equal(attack.status, 201);
+const attackId = attack.data.attacks[0].id;
+const joins = await Promise.all(Array.from({ length: 10 }, (_, n) => post(path + '/participants', { attackId, player: 'Gracz ' + n, units: '20 jednostek', seconds: 3600 })));
+assert(joins.every(r => r.status === 201));
+const board = await (await fetch(base + path)).json(); assert.equal(board.attacks[0].participants.length, 10);
+assert.equal(board.attacks[0].participants[0].launch, new Date(Date.parse(arrival) - 3600000).toISOString());
+assert.equal((await post(path + '/participants', { attackId, player: 'Gracz', units: '20', seconds: 10000 })).status, 400);
+const other = await post('/api/rooms', { name: 'Inny klan' });
+assert.equal((await post('/api/rooms/' + other.data.id + '/participants', { attackId, player: 'Gracz', units: '20', seconds: 100 })).status, 400);
+const forbidden = await fetch(base + '/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://obca-strona.example' }, body: JSON.stringify({ name: 'Test' }) });
+assert.equal(forbidden.status, 403);
+console.log('PASS: Workers + D1 — tablica, atak, 10 jednoczesnych zapisów, godzina wysłania, walidacja i izolacja klanów.');

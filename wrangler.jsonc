@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vioska-synchro",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-13",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "vioska-synchro",
+    "database_id": "85f16cd9-07a8-45da-8461-fc13bf9360c4",
+    "migrations_dir": "migrations"
+  }]
+}
