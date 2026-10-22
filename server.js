@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { departure } from './timing.js';
+import { participantTiming } from './public/march.js';
 
 mkdirSync(process.env.DATA_DIR || 'data', { recursive: true });
 const db = new DatabaseSync(`${process.env.DATA_DIR || 'data'}/vioska.db`);
@@ -13,7 +14,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     if (!url.pathname.startsWith('/api/')) {
-      const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+      const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/march.js': ['march.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
       const file = files[url.pathname];
       if (!file) return send(res, 404, { error: 'Nie znaleziono.' });
       res.writeHead(200, { 'Content-Type': file[1] + '; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'" });
@@ -44,9 +45,9 @@ const server = http.createServer(async (req, res) => {
     } else if (match[2] === 'participants') {
       const attack = room.attacks.find(a => a.id === body.attackId);
       if (!attack) throw new Error('Nie znaleziono ataku.');
-      const launch = departure(attack.arrival, body.seconds);
-      if (Date.parse(launch) <= Date.now()) throw new Error('Termin wysłania już minął. Wybierz krótszy marsz lub późniejszy atak.');
-      attack.participants.push({ id: randomUUID(), player: text(body.player), units: text(body.units, 500), seconds: body.seconds, launch });
+      const timing = participantTiming(attack.arrival, body);
+      if (Date.parse(timing.launch) <= Date.now()) throw new Error('Termin wysłania już minął. Wybierz krótszy marsz lub późniejszy atak.');
+      attack.participants.push({ id: randomUUID(), player: text(body.player), units: timing.units, seconds: timing.seconds, launch: timing.launch, march: timing });
     } else return send(res, 404, { error: 'Nie znaleziono.' });
     db.prepare('UPDATE rooms SET data = ? WHERE id = ?').run(JSON.stringify(room), match[1]);
     send(res, 201, room);

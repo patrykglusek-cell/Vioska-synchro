@@ -19,9 +19,9 @@ Serwer domyślnie nasłuchuje na porcie 3000. Opcjonalne zmienne: `PORT`, `HOST`
 
 1. Utwórz tablicę klanu i udostępnij jej link członkom klanu.
 2. Dodaj nazwę i współrzędne celu, datę oraz godzinę dotarcia z dokładnością do sekund.
-3. Dołączając, podaj nick, jednostki i czas marszu tej grupy odczytany z gry.
+3. Dołączając, podaj nick, pozycję wioski startowej, rzeczywistą długość trasy i liczebność wybranych jednostek. Aplikacja dobierze najwolniejszą jednostkę i uwzględni dzień oraz noc. Możesz też wybrać ręczny czas z gry.
 4. Aplikacja wylicza: godzina wysłania = godzina dotarcia − czas marszu.
 
 Daty są przechowywane w UTC, a wyświetlane w strefie urządzenia gracza. Tablica odświeża się co 5 sekund. Licznik koryguje zegar urządzenia względem zegara serwera; serwer powinien mieć poprawny czas. Nie wysyła ataków w grze ani powiadomień systemowych.
 
-Prędkości jednostek i wzór marszu nie są jeszcze potwierdzone ze źródła wiki; nie są zgadywane. Obecnie czas marszu trzeba wpisać ręcznie. Udostępnienie klanowi wymaga uruchomienia serwera pod publicznym adresem z HTTPS; samo lokalne uruchomienie nie publikuje strony. Przed publicznym wdrożeniem potrzebne są także limity żądań i uzgodnienie uprawnień do tablic.
+Czasy jednostek i cykl dnia/nocy zostały zweryfikowane w oficjalnej wiki 2026-10-22; szczegóły i ograniczenia są w [docs/MARCH.md](docs/MARCH.md). Aplikacja nie wyznacza jeszcze rzeczywistej trasy z samych pozycji HEX — wymaga podania jej długości. Udostępnienie klanowi wymaga uruchomienia serwera pod publicznym adresem z HTTPS; samo lokalne uruchomienie nie publikuje strony. Przed publicznym wdrożeniem potrzebne są także limity żądań i uzgodnienie uprawnień do tablic.

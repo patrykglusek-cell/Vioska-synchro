@@ -1,4 +1,5 @@
 import { departure } from './timing.js';
+import { participantTiming } from './public/march.js';
 
 const headers = {
   'Cache-Control': 'no-store',
@@ -15,12 +16,12 @@ async function board(db, id) {
   const results = await db.batch([
     db.prepare('SELECT name FROM rooms WHERE id = ?').bind(id),
     db.prepare('SELECT id, target, coordinates, notes, arrival FROM attacks WHERE room_id = ? ORDER BY arrival, rowid').bind(id),
-    db.prepare('SELECT p.id, p.attack_id, p.player, p.units, p.seconds, p.launch FROM participants p JOIN attacks a ON a.id = p.attack_id WHERE a.room_id = ? ORDER BY p.rowid').bind(id)
+    db.prepare('SELECT p.id, p.attack_id, p.player, p.units, p.seconds, p.launch, p.march_details FROM participants p JOIN attacks a ON a.id = p.attack_id WHERE a.room_id = ? ORDER BY p.rowid').bind(id)
   ]);
   if (!results[0].results.length) return null;
   const attacks = results[1].results.map(a => ({ ...a, participants: [] }));
   const byId = new Map(attacks.map(a => [a.id, a]));
-  for (const { attack_id, ...p } of results[2].results) byId.get(attack_id)?.participants.push(p);
+  for (const { attack_id, march_details, ...p } of results[2].results) byId.get(attack_id)?.participants.push({ ...p, march: march_details ? JSON.parse(march_details) : null });
   return { name: results[0].results[0].name, attacks, now: new Date().toISOString() };
 }
 export default {
@@ -79,13 +80,13 @@ export default {
         } else if (action === 'participants') {
           const attack = await env.DB.prepare('SELECT arrival FROM attacks WHERE id = ? AND room_id = ?').bind(text(body.attackId), id).first();
           if (!attack) throw new Error('Nie znaleziono ataku.');
-          const launch = departure(attack.arrival, body.seconds);
-          if (Date.parse(launch) <= Date.now()) throw new Error('Termin wysłania już minął. Wybierz krótszy marsz lub późniejszy atak.');
-          validated = [crypto.randomUUID(), body.attackId, text(body.player), text(body.units, 500), body.seconds, launch];
+          const timing = participantTiming(attack.arrival, body);
+          if (Date.parse(timing.launch) <= Date.now()) throw new Error('Termin wysłania już minął. Wybierz krótszy marsz lub późniejszy atak.');
+          validated = [crypto.randomUUID(), body.attackId, text(body.player), timing.units, timing.seconds, timing.launch, JSON.stringify(timing)];
         } else return json({ error: 'Nie znaleziono.' }, 404);
       } catch (error) { return json({ error: error.message }, 400); }
       if (action === 'attacks') await env.DB.prepare('INSERT INTO attacks (id, room_id, target, coordinates, notes, arrival) VALUES (?, ?, ?, ?, ?, ?)').bind(...validated).run();
-      else await env.DB.prepare('INSERT INTO participants (id, attack_id, player, units, seconds, launch) VALUES (?, ?, ?, ?, ?, ?)').bind(...validated).run();
+      else await env.DB.prepare('INSERT INTO participants (id, attack_id, player, units, seconds, launch, march_details) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(...validated).run();
       return json(await board(env.DB, id), 201);
     } catch {
       return json({ error: 'Nie udało się zapisać lub odczytać tablicy. Sprawdź dostępność bazy i limity Cloudflare.' }, 503);

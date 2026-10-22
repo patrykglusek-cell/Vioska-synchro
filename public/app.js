@@ -1,3 +1,4 @@
+import { UNITS, participantTiming } from './march.js';
 const $ = s => document.querySelector(s);
 let roomId = location.hash.slice(1), room, activeAttack, clockOffset = 0;
 const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,7 +20,7 @@ function message(text, error=false) { $('#message').textContent=text; $('#messag
 function render() {
   $('#welcome').hidden=true; $('#board').hidden=false; $('#room-name').textContent=room.name;
   $('#count').textContent=room.attacks.length + ' celów';
-  $('#attacks').innerHTML=room.attacks.length ? [...room.attacks].sort((a,b)=>Date.parse(a.arrival)-Date.parse(b.arrival)).map(a=>`<article class="card"><div class="attack-top"><div><div class="eyebrow">ATAK NA</div><h3>${esc(a.target)}</h3><span class="coordinates">Cel: ${esc(a.coordinates)}</span></div><span class="badge">${Date.parse(a.arrival)>now()?'Zaplanowany':'Termin minął'}</span></div><div class="arrival"><small>Wspólna godzina dotarcia</small><strong>${date(a.arrival)}</strong></div>${a.notes?`<p class="notes">${esc(a.notes)}</p>`:''}<button data-join="${a.id}" ${Date.parse(a.arrival)<=now()?'disabled':''}>Dołącz do ataku +</button><div class="players"><small>UCZESTNICY · ${a.participants.length}</small>${a.participants.map(p=>`<div class="player"><strong>${esc(p.player)}</strong><small>${esc(p.units)}</small><small>Marsz: ${Math.floor(p.seconds/3600)}h ${Math.floor(p.seconds%3600/60)}m ${p.seconds%60}s</small><div class="launch">Wyślij: ${date(p.launch)}</div><div class="countdown" data-launch="${p.launch}"></div></div>`).join('') || '<p class="hint">Bądź pierwszą osobą w tym ataku.</p>'}</div></article>`).join('') : '<div class="empty">Brak zaplanowanych ataków.<br>Dodaj pierwszy cel, aby zebrać drużynę.</div>';
+  $('#attacks').innerHTML=room.attacks.length ? [...room.attacks].sort((a,b)=>Date.parse(a.arrival)-Date.parse(b.arrival)).map(a=>`<article class="card"><div class="attack-top"><div><div class="eyebrow">ATAK NA</div><h3>${esc(a.target)}</h3><span class="coordinates">Cel: ${esc(a.coordinates)}</span></div><span class="badge">${Date.parse(a.arrival)>now()?'Zaplanowany':'Termin minął'}</span></div><div class="arrival"><small>Wspólna godzina dotarcia</small><strong>${date(a.arrival)}</strong></div>${a.notes?`<p class="notes">${esc(a.notes)}</p>`:''}<button data-join="${a.id}" ${Date.parse(a.arrival)<=now()?'disabled':''}>Dołącz do ataku +</button><div class="players"><small>UCZESTNICY · ${a.participants.length}</small>${a.participants.map(p=>`<div class="player"><strong>${esc(p.player)}</strong><small>${esc(p.units)}</small><small>${p.march?.mode === 'automatic' ? `Start: ${esc(p.march.origin)} · Trasa: ${p.march.routeHexes} pól · ${p.march.worldClock ? 'Dzień i noc' : 'Stała prędkość dzienna'}<br>Najwolniejsza: ${esc(p.march.slowest)}` : 'Czas marszu wpisany ręcznie'}</small><small>Marsz: ${Math.floor(p.seconds/3600)}h ${Math.floor(p.seconds%3600/60)}m ${p.seconds%60}s</small><div class="launch">Wyślij: ${date(p.launch)}</div><div class="countdown" data-launch="${p.launch}"></div></div>`).join('') || '<p class="hint">Bądź pierwszą osobą w tym ataku.</p>'}</div></article>`).join('') : '<div class="empty">Brak zaplanowanych ataków.<br>Dodaj pierwszy cel, aby zebrać drużynę.</div>';
   tick();
 }
 async function refresh() { const start=Date.now(); room=await api('rooms/'+roomId); clockOffset=Date.parse(room.now)-(start+Date.now())/2; render(); }
@@ -27,10 +28,42 @@ function tick() { document.querySelectorAll('[data-launch]').forEach(el=>{let s=
 async function submit(form, action, errorHandler) { const button=form.querySelector('button:not([type="button"])'); const label=button.textContent;button.disabled=true;button.textContent='Zapisywanie…';try { await action(); }catch(e){errorHandler(e.message);}finally{button.disabled=false;button.textContent=label;} }
 $('#room-form').addEventListener('submit', e=>{e.preventDefault();submit(e.target,async()=>{const data=await api('rooms',Object.fromEntries(new FormData(e.target)));roomId=data.id;location.hash=roomId;await refresh();message('Tablica gotowa. Skopiuj link i udostępnij go członkom klanu.');},t=>message(t,true));});
 $('#attack-form').addEventListener('submit',e=>{e.preventDefault();submit(e.target,async()=>{const body=Object.fromEntries(new FormData(e.target));body.arrival=new Date(body.arrival).toISOString();await api('rooms/'+roomId+'/attacks',body);e.target.reset();await refresh();message('Atak został zaplanowany.');},t=>message(t,true));});
-$('#attacks').addEventListener('click',e=>{const button=e.target.closest('[data-join]');if(!button)return;activeAttack=room.attacks.find(a=>a.id===button.dataset.join);$('#join-form').reset();$('#join-form').elements.attackId.value=activeAttack.id;$('#join-target').textContent=`${activeAttack.target} · dotarcie ${date(activeAttack.arrival)}`;$('#join-error').textContent='';$('#launch-preview').textContent='';$('#join-dialog').showModal();});
+$('#attacks').addEventListener('click',e=>{const button=e.target.closest('[data-join]');if(!button)return;activeAttack=room.attacks.find(a=>a.id===button.dataset.join);$('#join-form').reset();updateMode();$('#join-form').elements.attackId.value=activeAttack.id;$('#join-target').textContent=`${activeAttack.target} · dotarcie ${date(activeAttack.arrival)}`;$('#join-error').textContent='';$('#launch-preview').textContent='';$('#join-dialog').showModal();updatePreview();});
 $('#close-dialog').onclick=()=>$('#join-dialog').close();
-$('#join-form').addEventListener('input',e=>{const s=seconds(e.currentTarget);$('#launch-preview').textContent=s>0?`Wyślij jednostki: ${date(Date.parse(activeAttack.arrival)-s*1000)}`:'Podaj czas marszu, aby zobaczyć godzinę wysłania.';});
-$('#join-form').addEventListener('submit',e=>{e.preventDefault();submit(e.target,async()=>{const body=Object.fromEntries(new FormData(e.target));body.seconds=seconds(e.target);await api('rooms/'+roomId+'/participants',body);$('#join-dialog').close();await refresh();message('Zapisano udział i godzinę wysłania jednostek.');},t=>$('#join-error').textContent=t);});
+function timingBody(form) {
+  return { mode: form.elements.mode.value, origin: form.elements.origin.value,
+    routeHexes: Number(form.elements.routeHexes.value), worldClock: form.elements.worldClock.value === 'true',
+    troops: UNITS.map(u => ({ type: u.type, count: Number(form.elements['troop-' + u.type].value) })).filter(u => u.count !== 0),
+    units: form.elements.units.value, seconds: seconds(form) };
+}
+function updateMode() {
+  const automatic = $('#join-form').elements.mode.value === 'automatic';
+  for (const [selector, enabled] of [['#automatic-fields', automatic], ['#manual-fields', !automatic]]) {
+    const section = $(selector); section.hidden = !enabled;
+    section.querySelectorAll('input,select,textarea').forEach(el => el.disabled = !enabled);
+  }
+  $('#join-form').elements.units.required = !automatic;
+}
+function updatePreview() {
+  if (!activeAttack) return;
+  try {
+    const timing = participantTiming(activeAttack.arrival, timingBody($('#join-form')));
+    const duration = `${Math.floor(timing.seconds/3600)}h ${Math.floor(timing.seconds%3600/60)}m ${timing.seconds%60}s`;
+    $('#launch-preview').textContent = `Wyślij jednostki: ${date(timing.launch)} · Marsz: ${duration}` + (timing.slowest ? ` · Najwolniejsza jednostka: ${timing.slowest}.` : '') + (Date.parse(timing.launch) <= now() ? ' Uwaga: termin wysłania już minął.' : '');
+  } catch (error) { $('#launch-preview').textContent = error.message; }
+}
+$('#troops').innerHTML = UNITS.map(u => `<label class="troop-row"><span>${esc(u.name)}<small>${u.secondsPerHex} s / pole za dnia</small></span><input aria-label="${esc(u.name)} — liczba" name="troop-${u.type}" type="number" min="0" max="1000000000" step="1" value="0"></label>`).join('');
+$('#join-form').addEventListener('input', updatePreview);
+$('#join-form').addEventListener('change', () => { updateMode(); updatePreview(); });
+$('#join-form').addEventListener('submit', e => {
+  e.preventDefault();
+  submit(e.target, async () => {
+    const body = { ...timingBody(e.target), attackId: e.target.elements.attackId.value, player: e.target.elements.player.value };
+    participantTiming(activeAttack.arrival, body);
+    await api('rooms/'+roomId+'/participants', body);
+    $('#join-dialog').close(); await refresh(); message('Zapisano udział i godzinę wysłania jednostek.');
+  }, t => $('#join-error').textContent = t);
+});
 $('#share').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);message('Link skopiowany. Każdy z linkiem ma dostęp do tablicy.');}catch{message('Skopiuj adres tej strony z paska przeglądarki.');}};
 document.querySelectorAll('.timezone').forEach(el=>el.textContent='Godziny w strefie Twojego urządzenia: '+Intl.DateTimeFormat().resolvedOptions().timeZone+'.');
 window.addEventListener('hashchange',()=>{roomId=location.hash.slice(1);if(roomId)refresh().catch(e=>message(e.message,true));else location.reload();});

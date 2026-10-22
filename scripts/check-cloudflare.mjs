@@ -15,6 +15,12 @@ const joins = await Promise.all(Array.from({ length: 10 }, (_, n) => post(path +
 assert(joins.every(r => r.status === 201));
 const board = await (await fetch(base + path)).json(); assert.equal(board.attacks[0].participants.length, 10);
 assert.equal(board.attacks[0].participants[0].launch, new Date(Date.parse(arrival) - 3600000).toISOString());
+const auto = await post(path + '/participants', { attackId, player:'Auto', mode:'automatic', origin:'HEX 100', routeHexes:2, troops:[{type:'SCOUT',count:10},{type:'RAM',count:1}], worldClock:true, seconds:1, units:'fake' });
+assert.equal(auto.status,201);
+const automatic = auto.data.attacks[0].participants.find(p => p.player === 'Auto');
+assert.equal(automatic.march.slowest,'Taran');assert.equal(automatic.march.routeHexes,2);
+assert(automatic.seconds >= 720 && automatic.seconds <= 864);
+assert.equal(automatic.launch,new Date(Date.parse(arrival) - automatic.seconds*1000).toISOString());
 assert.equal((await post(path + '/participants', { attackId, player: 'Gracz', units: '20', seconds: 10000 })).status, 400);
 const other = await post('/api/rooms', { name: 'Inny klan' });
 assert.equal((await post('/api/rooms/' + other.data.id + '/participants', { attackId, player: 'Gracz', units: '20', seconds: 100 })).status, 400);
