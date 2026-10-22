@@ -13,7 +13,20 @@ Stan danych: 22 października 2026. Czas marszu korzysta z `movement_secs_per_he
 
 Algorytm cofa się od zaplanowanego momentu dotarcia, rozliczając dystans pokonany w każdej godzinowej fazie UTC. Wynik jest zaokrąglany do pełnych sekund w stronę wcześniejszego wysłania (różnica matematyczna poniżej sekundy). Serwer przelicza skład i trasę ponownie; nie ufa czasom ani opisowi jednostek przesłanym przez przeglądarkę.
 
-Nie znamy jeszcze publicznego źródła mapy, przeszkód i sposobu dekodowania oznaczeń HEX. Dlatego pozycja wioski startowej jest zapisywana informacyjnie, a gracz musi podać **rzeczywistą liczbę pól trasy**. Nie utożsamiamy różnicy numerów HEX ani odległości w linii prostej z długością marszu. Automatyczne wyznaczanie trasy z dwóch pozycji pozostaje do wykonania po uzyskaniu tych danych. Nie jest to połączenie z kontem gry.
+## Oszacowanie z dwóch pozycji
+
+Gracz przedstawił dwa przykłady marszu samych 1351 rycerzy z wioski (68, 71):
+
+| Cel | Czas z ekranu gry | `ceil(hypot(dx, dy))` | Czas przy 300 s/pole |
+| --- | --- | --- | --- |
+| (31, −54) | 10:55:00 | 131 | 10:55:00 |
+| (65, 72) | 00:20:00 | 4 | 00:20:00 |
+
+To dane obserwacyjne, nie potwierdzenie algorytmu serwera. Faza zegara świata i moment planowanego wysłania nie były widoczne na zdjęciach; porównanie dotyczy bazowego tempa dziennego. Nie dowodzi, że zasady nocy są wyłączone na serwerze gracza.
+
+Tryb domyślny **Z pozycji i jednostek — oszacowanie** oblicza odległość euklidesową i zaokrągla ją do pełnych pól w górę. Oba przykłady są testami regresyjnymi. Dalsza część kalkulacji korzysta ze składu i wybranego zegara świata. Podgląd i zapisany wynik są wyraźnie oznaczone jako szacunkowe. Pozycja celu pochodzi z zapisanego ataku i jest ponownie odczytywana przez serwer — nie ufamy podmienionemu celowi ani długości trasy z przeglądarki. Nie trzeba podawać sektorów; stosujemy współrzędne X i Y widoczne na mapie, np. `68 | 71` i `31 | -54`.
+
+Nie znamy publicznego źródła mapy i pełnego algorytmu tras. Nie gwarantujemy poprawności modelu dla każdej pary pozycji. Gdy model nie pasuje do czasu w grze, można przełączyć tryb na znaną rzeczywistą długość trasy lub ręczny czas z gry. Wcześniejsze wpisy pozostają bez zmian.
 
 Można wybrać stałą prędkość dzienną, jeśli dany serwer gry nie ma aktywnej mechaniki nocy. Zachowano także ręczny czas z gry. Historyczne wpisy nie zmieniają swoich godzin. Przed planowanym atakiem warto porównać wynik z ekranem wysyłania w grze, zwłaszcza jeśli zasady serwera lub parametry jednostek zmienią się po dacie odczytu.
 

@@ -78,9 +78,9 @@ export default {
           if (Date.parse(arrival) <= Date.now()) throw new Error('Godzina dotarcia musi być w przyszłości.');
           validated = [crypto.randomUUID(), id, text(body.target), text(body.coordinates), typeof body.notes === 'string' ? body.notes.slice(0, 1000) : '', arrival];
         } else if (action === 'participants') {
-          const attack = await env.DB.prepare('SELECT arrival FROM attacks WHERE id = ? AND room_id = ?').bind(text(body.attackId), id).first();
+          const attack = await env.DB.prepare('SELECT arrival, coordinates FROM attacks WHERE id = ? AND room_id = ?').bind(text(body.attackId), id).first();
           if (!attack) throw new Error('Nie znaleziono ataku.');
-          const timing = participantTiming(attack.arrival, body);
+          const timing = participantTiming(attack.arrival, body, attack.coordinates);
           if (Date.parse(timing.launch) <= Date.now()) throw new Error('Termin wysłania już minął. Wybierz krótszy marsz lub późniejszy atak.');
           validated = [crypto.randomUUID(), body.attackId, text(body.player), timing.units, timing.seconds, timing.launch, JSON.stringify(timing)];
         } else return json({ error: 'Nie znaleziono.' }, 404);

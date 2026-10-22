@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateMarch, participantTiming } from '../public/march.js';
+import { calculateMarch, participantTiming, parseCoordinates, estimateRoute } from '../public/march.js';
 const scouts = [{ type: 'SCOUT', count: 20 }];
 test('marsz dzienny i najwolniejsza jednostka w mieszanej armii', () => {
   const r = calculateMarch('2026-10-22T02:00:00Z', 10, [...scouts, { type: 'CATAPULT', count: 1 }]);
@@ -37,4 +37,23 @@ test('walidacja, limit czasu i przeliczenie po stronie serwera zamiast zaufania 
   assert.throws(() => participantTiming('2026-10-22T03:30Z', { mode:'automatic', origin:'', routeHexes:10,troops:scouts }));
   const result = participantTiming('2026-10-22T03:30Z', { mode:'automatic', origin:'HEX 123', routeHexes:10, troops:scouts, seconds:1, launch:'fake', units:'fake' });
   assert.equal(result.seconds, 900); assert.equal(result.units, '20 × Zwiadowca');
+});
+
+test('model współrzędnych odtwarza dwa przykłady pokazane przez gracza', () => {
+  const knights = [{ type:'KNIGHT', count:1351 }];
+  assert.equal(estimateRoute('68.0, 71.0', '31.0, -54.0'), 131);
+  assert.equal(estimateRoute('68 | 71', '65 | 72'), 4);
+  assert.equal(participantTiming('2026-10-24T16:00Z', {mode:'coordinates',origin:'68 | 71',troops:knights,worldClock:false}, '31 | -54').seconds, 39300);
+  const short = participantTiming('2026-10-24T16:00Z', {mode:'coordinates',origin:'68 | 71',troops:knights,worldClock:false}, '65 | 72');
+  assert.equal(short.seconds,1200);assert.equal(short.estimated,true);assert.equal(short.routeMethod,'coordinates');
+});
+test('współrzędne: znaki, ułamki, granice zaokrąglenia i odrzucanie niejednoznacznych zapisów', () => {
+  assert.deepEqual(parseCoordinates('-31.5 | 72.25'),{x:-31.5,y:72.25});
+  assert.equal(estimateRoute('0; 0','3, 4'),5);
+  assert.equal(estimateRoute('0 0','3 4.1'),6);
+  for (const bad of ['HEX 123','68','68,5,71,5','68 | 71 | 72','Infinity | 1','1000001 | 1']) assert.throws(()=>parseCoordinates(bad));
+  assert.throws(()=>estimateRoute('68|71','68|71'));
+  const result=participantTiming('2026-10-24T16:00Z',{mode:'coordinates',origin:'68|71',routeHexes:999,seconds:1,units:'fake',troops:scouts,worldClock:false},'65|72');
+  assert.equal(result.routeHexes,4);assert.equal(result.seconds,300);
+  assert.throws(()=>participantTiming('2026-10-24T16:00Z',{mode:'coordinates',origin:'68|71',target:'65|72',troops:scouts}));
 });

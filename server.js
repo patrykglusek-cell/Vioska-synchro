@@ -45,7 +45,7 @@ const server = http.createServer(async (req, res) => {
     } else if (match[2] === 'participants') {
       const attack = room.attacks.find(a => a.id === body.attackId);
       if (!attack) throw new Error('Nie znaleziono ataku.');
-      const timing = participantTiming(attack.arrival, body);
+      const timing = participantTiming(attack.arrival, body, attack.coordinates);
       if (Date.parse(timing.launch) <= Date.now()) throw new Error('Termin wysłania już minął. Wybierz krótszy marsz lub późniejszy atak.');
       attack.participants.push({ id: randomUUID(), player: text(body.player), units: timing.units, seconds: timing.seconds, launch: timing.launch, march: timing });
     } else return send(res, 404, { error: 'Nie znaleziono.' });

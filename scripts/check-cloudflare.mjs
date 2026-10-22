@@ -21,6 +21,11 @@ const automatic = auto.data.attacks[0].participants.find(p => p.player === 'Auto
 assert.equal(automatic.march.slowest,'Taran');assert.equal(automatic.march.routeHexes,2);
 assert(automatic.seconds >= 720 && automatic.seconds <= 864);
 assert.equal(automatic.launch,new Date(Date.parse(arrival) - automatic.seconds*1000).toISOString());
+const coordinates = await post(path+'/participants',{attackId, player:'Coordinates',mode:'coordinates',origin:'499 | 500',target:'0|0',routeHexes:9999,seconds:1,worldClock:false,troops:[{type:'SCOUT',count:10}]});
+assert.equal(coordinates.status,201);
+const estimated=coordinates.data.attacks[0].participants.find(p=>p.player==='Coordinates');
+assert.equal(estimated.march.routeHexes,1);assert.equal(estimated.seconds,75);assert.equal(estimated.march.estimated,true);
+assert.equal(estimated.march.target,'500|500');
 assert.equal((await post(path + '/participants', { attackId, player: 'Gracz', units: '20', seconds: 10000 })).status, 400);
 const other = await post('/api/rooms', { name: 'Inny klan' });
 assert.equal((await post('/api/rooms/' + other.data.id + '/participants', { attackId, player: 'Gracz', units: '20', seconds: 100 })).status, 400);

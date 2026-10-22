@@ -43,6 +43,6 @@ W drugim terminalu: `node scripts/check-cloudflare.mjs`. Test tworzy dane tylko 
 - Wybierz plan Workers **Free**. Darmowe limity mogą czasowo blokować aplikację po ich przekroczeniu.
 - Każdy z linkiem klanu może czytać tablicę i dodawać dane. Nie ma jeszcze kont, moderacji ani limitowania żądań aplikacji.
 - Dane lokalnego serwera Node.js nie są automatycznie przenoszone do D1.
-- Obliczanie marszu korzysta z danych wiki z 2026-10-22, najwolniejszej jednostki i faz dnia/nocy. Rzeczywistą długość trasy trzeba podać samodzielnie; aplikacja nie ma mapy przeszkód. Szczegóły: `docs/MARCH.md`.
+- Obliczanie marszu korzysta z danych wiki z 2026-10-22, najwolniejszej jednostki i faz dnia/nocy. Domyślnie odległość jest szacowana z pozycji X i Y zgodnie z dwoma przykładami gracza. Wynik pozostaje oszacowaniem; można podać rzeczywistą długość trasy lub czas z gry. Szczegóły: `docs/MARCH.md`.
 - Aktualizacja z wcześniejszej wersji: najpierw `npm run db:remote` (dodatkowa kolumna, bez usuwania danych), następnie `npm run deploy`.
 - Automatyczne odświeżanie działa tylko przy widocznej stronie, co ogranicza zużycie darmowego limitu.

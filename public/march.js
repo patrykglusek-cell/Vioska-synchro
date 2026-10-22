@@ -141,12 +141,31 @@ export function calculateMarch(arrival, routeHexes, troops, worldClock = true) {
     units: selected.map(u => `${u.count} × ${u.name}`).join(', '), routeHexes, worldClock };
 }
 
-export function participantTiming(arrival, body) {
-  if (body.mode === 'automatic') {
-    const result = calculateMarch(arrival, body.routeHexes, body.troops, body.worldClock);
+export function parseCoordinates(value) {
+  if (typeof value !== 'string' || value.length > 100) throw new Error('Podaj współrzędne X i Y, np. 68 | 71 (nie numer sektora).');
+  const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*(?:\||;|,|\s)\s*(-?\d+(?:\.\d+)?)$/);
+  if (!match) throw new Error('Podaj współrzędne X i Y, np. 68 | 71. Używaj kropki dla części dziesiętnej.');
+  const [x, y] = match.slice(1).map(Number);
+  if (![x, y].every(n => Number.isFinite(n) && Math.abs(n) <= 1000000)) throw new Error('Współrzędne muszą mieścić się w zakresie od −1000000 do 1000000.');
+  return { x, y };
+}
+
+export function estimateRoute(origin, target) {
+  const start = parseCoordinates(origin), end = parseCoordinates(target);
+  const distance = Math.hypot(end.x - start.x, end.y - start.y);
+  if (distance === 0) throw new Error('Wioska startowa i cel muszą mieć różne współrzędne.');
+  return Math.ceil(distance);
+}
+
+export function participantTiming(arrival, body, targetCoordinates) {
+  if (body.mode === 'automatic' || body.mode === 'coordinates') {
+    const estimated = body.mode === 'coordinates';
+    const routeHexes = estimated ? estimateRoute(body.origin, targetCoordinates) : body.routeHexes;
+    const result = calculateMarch(arrival, routeHexes, body.troops, body.worldClock);
     const origin = typeof body.origin === 'string' ? body.origin.trim() : '';
     if (!origin || origin.length > 100) throw new Error('Podaj HEX / pozycję wioski startowej (maks. 100 znaków).');
-    return { ...result, origin, mode: 'automatic' };
+    return { ...result, origin, mode: 'automatic', routeMethod: estimated ? 'coordinates' : 'provided', estimated,
+      ...(estimated ? { target: targetCoordinates } : {}) };
   }
   if (body.mode && body.mode !== 'manual') throw new Error('Nieznany tryb obliczeń.');
   const end = Date.parse(arrival);
